@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CleanSweep — Directory Cleaner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0d0e11;
+  --bg2: #13151a;
+  --bg3: #1a1d24;
+  --bg4: #21252f;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8eaf0;
+  --text2: #8b90a0;
+  --text3: #55596a;
+  --accent: #4af0b0;
+  --accent2: #00c87a;
+  --danger: #ff4d6a;
+  --danger2: #cc2244;
+  --warn: #ffa940;
+  --info: #4da6ff;
+  --purple: #b06aff;
+  --pink: #ff6aad;
+  --font: 'IBM Plex Sans', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+  --r: 6px;
+  --r2: 10px;
+  --sidebar: 220px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; overflow: hidden; }
+
+/* ── LAYOUT ─────────────────────────────────────────── */
+.shell { display: flex; height: 100vh; }
+
+/* ── SIDEBAR ─────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar);
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.brand {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-icon {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+}
+.brand-icon svg { width: 16px; height: 16px; stroke: #0d0e11; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.brand-name { font-size: 14px; font-weight: 600; letter-spacing: 0.02em; }
+.brand-sub { font-size: 10px; color: var(--text3); font-family: var(--mono); letter-spacing: 0.08em; }
+
+.nav { flex: 1; padding: 10px 8px; overflow-y: auto; }
+.nav-section { font-size: 9px; font-weight: 600; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; padding: 8px 8px 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: var(--r);
+  cursor: pointer; color: var(--text2);
+  font-size: 13px; font-weight: 400;
+  transition: all 0.15s; margin-bottom: 1px;
+  border: 1px solid transparent;
+  user-select: none;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: rgba(74,240,176,0.08); color: var(--accent); border-color: rgba(74,240,176,0.15); }
+.nav-item svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.nav-badge { margin-left: auto; font-size: 10px; background: var(--danger); color: #fff; border-radius: 10px; padding: 1px 6px; font-weight: 600; }
+.nav-badge.green { background: rgba(74,240,176,0.15); color: var(--accent); }
+
+.sidebar-footer {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+.disk-usage { font-size: 11px; color: var(--text3); margin-bottom: 6px; display: flex; justify-content: space-between; }
+.disk-track { height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; }
+.disk-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width 0.5s; }
+
+/* ── MAIN ─────────────────────────────────────────────── */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+
+/* ── TOPBAR ─────────────────────────────────────────── */
+.topbar {
+  height: 52px; flex-shrink: 0;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 18px; gap: 12px;
+}
+.breadcrumb { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 12px; color: var(--text2); }
+.breadcrumb span { color: var(--text3); }
+.breadcrumb .cur { color: var(--text); }
+.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: var(--r); border: 1px solid var(--border2);
+  background: var(--bg3); color: var(--text); font-size: 12px; font-family: var(--font);
+  cursor: pointer; transition: all 0.15s; font-weight: 500; white-space: nowrap;
+}
+.btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.btn:hover { background: var(--bg4); border-color: rgba(255,255,255,0.18); }
+.btn.accent { background: var(--accent); color: #0d0e11; border-color: var(--accent); font-weight: 600; }
+.btn.accent:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn.danger { background: rgba(255,77,106,0.12); color: var(--danger); border-color: rgba(255,77,106,0.3); }
+.btn.danger:hover { background: rgba(255,77,106,0.2); }
+.btn.sm { padding: 4px 9px; font-size: 11px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── CONTENT ─────────────────────────────────────────── */
+.content { flex: 1; display: flex; overflow: hidden; }
+
+/* ── PANELS ─────────────────────────────────────────── */
+.panel { height: 100%; overflow-y: auto; }
+.panel-main { flex: 1; min-width: 0; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.panel-right { width: 280px; flex-shrink: 0; border-left: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+
+/* ── CARDS ─────────────────────────────────────────── */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); overflow: hidden; }
+.card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.card-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.07em; display: flex; align-items: center; gap: 7px; }
+.card-title svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.card-body { padding: 14px 16px; }
+
+/* ── METRICS GRID ─────────────────────────────────────── */
+.metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+.metric { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); padding: 14px 16px; position: relative; overflow: hidden; }
+.metric::before { content:''; position:absolute; inset:0; opacity:0.04; }
+.metric.blue::before { background: var(--info); }
+.metric.red::before { background: var(--danger); }
+.metric.green::before { background: var(--accent); }
+.metric.warn::before { background: var(--warn); }
+.metric-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 500; }
+.metric-val { font-size: 26px; font-weight: 600; font-family: var(--mono); line-height: 1; }
+.metric-val.blue { color: var(--info); }
+.metric-val.red { color: var(--danger); }
+.metric-val.green { color: var(--accent); }
+.metric-val.warn { color: var(--warn); }
+.metric-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+.metric-trend { position: absolute; right: 14px; top: 14px; font-size: 18px; opacity: 0.15; }
+
+/* ── FILTER BAR ─────────────────────────────────────── */
+.filter-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg3); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.filter-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 20px;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text2); font-size: 11px; font-weight: 500;
+  cursor: pointer; transition: all 0.12s; font-family: var(--font);
+}
+.chip:hover { border-color: var(--border2); color: var(--text); }
+.chip.active { border-color: var(--accent); color: var(--accent); background: rgba(74,240,176,0.08); }
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.sort-group { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.sort-group label { font-size: 11px; color: var(--text3); }
+select {
+  background: var(--bg3); color: var(--text); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 4px 8px; font-size: 11px; font-family: var(--font);
+  cursor: pointer; outline: none;
+}
+select:focus { border-color: var(--accent); }
+
+/* ── FILE TABLE ─────────────────────────────────────── */
+.table-wrap { overflow: auto; max-height: 360px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead { position: sticky; top: 0; z-index: 2; }
+th {
+  padding: 8px 12px; text-align: left;
+  background: var(--bg3); color: var(--text3);
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--border); white-space: nowrap; user-select: none; cursor: pointer;
+}
+th:hover { color: var(--text2); }
+th.sorted { color: var(--accent); }
+td { padding: 7px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr.dup-row { }
+tr:hover td { background: var(--bg3); }
+tr.selected td { background: rgba(74,240,176,0.05); }
+tr.selected td:first-child { border-left: 2px solid var(--accent); }
+.file-icon-cell { display: flex; align-items: center; gap: 8px; }
+.file-icon-cell svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.fname { font-weight: 500; color: var(--text); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fpath { color: var(--text3); font-family: var(--mono); font-size: 10px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.type-pill {
+  display: inline-block; padding: 2px 7px; border-radius: 4px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.04em; font-family: var(--mono);
+}
+.dup-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; background: rgba(255,169,64,0.12); color: var(--warn); border: 1px solid rgba(255,169,64,0.25); }
+.hash-cell { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+.size-cell { font-family: var(--mono); font-size: 12px; text-align: right; white-space: nowrap; }
+.row-actions { display: flex; gap: 4px; justify-content: flex-end; opacity: 0; transition: opacity 0.1s; }
+tr:hover .row-actions { opacity: 1; }
+.icon-btn { background: none; border: 1px solid transparent; border-radius: 4px; padding: 3px 5px; cursor: pointer; color: var(--text3); display: flex; align-items: center; }
+.icon-btn:hover { background: var(--bg4); border-color: var(--border2); color: var(--text); }
+.icon-btn.del:hover { color: var(--danger); border-color: rgba(255,77,106,0.3); background: rgba(255,77,106,0.08); }
+.icon-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cb { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+.select-all-row th { padding-top: 6px; padding-bottom: 6px; }
+
+/* ── DONUT ─────────────────────────────────────────── */
+.donut-wrap { display: flex; align-items: center; gap: 16px; padding: 4px 0; }
+.donut-legend { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.legend-row { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; padding: 4px 6px; border-radius: var(--r); transition: background 0.1s; }
+.legend-row:hover { background: var(--bg3); }
+.leg-color { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.leg-name { flex: 1; color: var(--text2); }
+.leg-size { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+.leg-pct { font-family: var(--mono); font-size: 11px; color: var(--text3); min-width: 30px; text-align: right; }
+
+/* ── TREE ─────────────────────────────────────────── */
+.tree-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--r); cursor: pointer; transition: background 0.1s; }
+.tree-item:hover { background: var(--bg3); }
+.tree-item svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.tree-name { flex: 1; font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-bar-wrap { width: 80px; height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; }
+.tree-bar-fill { height: 100%; border-radius: 2px; }
+.tree-sz { font-family: var(--mono); font-size: 10px; color: var(--text3); min-width: 46px; text-align: right; }
+.tree-count { font-size: 10px; color: var(--text3); min-width: 30px; text-align: right; }
+
+/* ── RIGHT PANEL ─────────────────────────────────────── */
+.section-title { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.section-title svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.dup-group { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 6px; overflow: hidden; }
+.dup-group-header { padding: 8px 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.dup-group-header:hover { background: var(--bg4); }
+.dup-group-title { font-size: 12px; font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dup-count { font-size: 10px; background: rgba(255,169,64,0.15); color: var(--warn); padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+.dup-save { font-family: var(--mono); font-size: 10px; color: var(--accent); }
+.dup-files { padding: 0 10px 8px; display: none; }
+.dup-files.open { display: block; }
+.dup-file { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 11px; color: var(--text3); font-family: var(--mono); border-top: 1px solid var(--border); }
+.dup-file:first-child { border-top: none; }
+.dup-file-orig { color: var(--accent); font-size: 9px; }
+
+/* ── SCAN ANIMATION ─────────────────────────────────── */
+.scan-overlay {
+  position: fixed; inset: 0; background: rgba(13,14,17,0.9);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 1000; backdrop-filter: blur(4px);
+  opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.scan-overlay.active { opacity: 1; pointer-events: all; }
+.scan-box { text-align: center; }
+.scan-spinner {
+  width: 48px; height: 48px; border: 2px solid var(--bg4);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.scan-label { font-size: 13px; font-family: var(--mono); color: var(--accent); margin-bottom: 8px; }
+.scan-file { font-size: 11px; color: var(--text3); font-family: var(--mono); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scan-bar { width: 300px; height: 2px; background: var(--bg4); border-radius: 1px; margin-top: 16px; overflow: hidden; }
+.scan-bar-fill { height: 100%; background: var(--accent); border-radius: 1px; transition: width 0.1s; }
+
+/* ── MODAL ─────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 500; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--r2); padding: 24px; min-width: 380px; max-width: 480px;
+  transform: translateY(10px); transition: transform 0.2s;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.modal h2 svg { width: 18px; height: 18px; stroke: var(--danger); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.modal p { font-size: 13px; color: var(--text2); margin-bottom: 14px; line-height: 1.6; }
+.modal-list { background: var(--bg3); border-radius: var(--r); padding: 10px 12px; max-height: 160px; overflow-y: auto; margin-bottom: 12px; }
+.modal-list-item { font-family: var(--mono); font-size: 11px; color: var(--text3); padding: 3px 0; border-top: 1px solid var(--border); display: flex; justify-content: space-between; }
+.modal-list-item:first-child { border-top: none; }
+.modal-list-item .name { color: var(--text2); max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modal-summary { background: rgba(255,77,106,0.06); border: 1px solid rgba(255,77,106,0.2); border-radius: var(--r); padding: 10px 12px; margin-bottom: 16px; font-size: 12px; color: var(--danger); display: flex; justify-content: space-between; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ── TOAST ─────────────────────────────────────────── */
+.toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 10px 14px; font-size: 12px;
+  display: flex; align-items: center; gap: 8px;
+  transform: translateX(120%); transition: transform 0.25s;
+  max-width: 300px; pointer-events: all;
+}
+.toast.show { transform: translateX(0); }
+.toast.success { border-color: rgba(74,240,176,0.3); }
+.toast.success svg { stroke: var(--accent); }
+.toast.error { border-color: rgba(255,77,106,0.3); }
+.toast.error svg { stroke: var(--danger); }
+.toast svg { width: 14px; height: 14px; stroke: var(--text2); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+/* ── EMPTY STATE ─────────────────────────────────────── */
+.empty { text-align: center; padding: 40px; color: var(--text3); }
+.empty svg { width: 32px; height: 32px; stroke: var(--text3); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; margin: 0 auto 10px; display: block; }
+.empty p { font-size: 13px; }
+
+/* ── PROGRESS RING ─────────────────────────────────── */
+.ring-wrap { position: relative; flex-shrink: 0; }
+.ring-wrap .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-val { font-size: 18px; font-weight: 600; font-family: var(--mono); line-height: 1; }
+.ring-sub { font-size: 9px; color: var(--text3); margin-top: 2px; }
+
+/* ── TAB BAR ─────────────────────────────────────────── */
+.tab-bar { display: flex; gap: 2px; background: var(--bg3); padding: 3px; border-radius: var(--r); }
+.tab { padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text3); border: none; background: none; font-family: var(--font); transition: all 0.12s; }
+.tab:hover { color: var(--text2); }
+.tab.active { background: var(--bg2); color: var(--text); border: 1px solid var(--border); }
+
+/* ── SCROLLBARS ─────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* ── VIEW PANELS ─────────────────────────────────────── */
+.view { display: none; }
+.view.active { display: flex; flex-direction: column; gap: 14px; }
+
+/* ── STATUS BAR ─────────────────────────────────────── */
+.statusbar {
+  height: 26px; flex-shrink: 0;
+  background: var(--bg2); border-top: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 14px; gap: 16px;
+  font-size: 10px; color: var(--text3); font-family: var(--mono);
+}
+.statusbar span { display: flex; align-items: center; gap: 5px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── SIDEBAR ───────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 16 16"><path d="M2 13l4-8 4 6 2-3 2 5"/><path d="M14 4l-2-2-2 2"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">CleanSweep</div>
+        <div class="brand-sub">v2.4.1</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-section">Overview</div>
+      <div class="nav-item active" onclick="switchView('dashboard',this)">
+        <svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" onclick="switchView('files',this)">
+        <svg viewBox="0 0 16 16"><path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M10 2v4h4"/></svg>
+        All Files
+      </div>
+      <div class="nav-section">Analysis</div>
+      <div class="nav-item" onclick="switchView('dupes',this)">
+        <svg viewBox="0 0 16 16"><path d="M3 4h7l3 3v6a1 1 0 01-1 1H3a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M5 4V3a1 1 0 011-1h7l3 3v6a1 1 0 01-1 1h-1"/></svg>
+        Duplicates
+        <span class="nav-badge" id="nav-dup-badge">12</span>
+      </div>
+      <div class="nav-item" onclick="switchView('large',this)">
+        <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7"/><path d="M8 5v3l2 2"/></svg>
+        Large Files
+      </div>
+      <div class="nav-item" onclick="switchView('tree',this)">
+        <svg viewBox="0 0 16 16"><path d="M2 2h4v3H2zM10 2h4v3h-4zM6 11h4v3H6z"/><path d="M4 5v3h8V5M8 8v3"/></svg>
+        Directory Tree
+      </div>
+      <div class="nav-section">Clean</div>
+      <div class="nav-item" onclick="switchView('trash',this)">
+        <svg viewBox="0 0 16 16"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/></svg>
+        Deleted
+        <span class="nav-badge green" id="nav-trash-badge">0</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="disk-usage">
+        <span>Disk usage</span>
+        <span id="disk-pct">67%</span>
+      </div>
+      <div class="disk-track"><div class="disk-fill" id="disk-fill" style="width:67%"></div></div>
+      <div style="margin-top:6px;font-size:10px;color:var(--text3)">84.3 GB / 128 GB</div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ───────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="breadcrumb">
+        <svg style="width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 16 16"><path d="M1 13V6l7-4 7 4v7a1 1 0 01-1 1H2a1 1 0 01-1-1z"/><path d="M6 14V9h4v5"/></svg>
+        <span>home</span><span>/</span><span>Users</span><span>/</span><span class="cur">Documents</span>
+      </div>
+      <div class="topbar-actions">
+        <span style="font-size:11px;color:var(--text3)" id="sel-summary">0 selected</span>
+        <button class="btn sm" onclick="selectDupes()">
+          <svg viewBox="0 0 16 16"><path d="M3 4h7l3 3v6a1 1 0 01-1 1H3a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M5 4V3a1 1 0 011-1h7l3 3v6a1 1 0 01-1 1h-1"/></svg>
+          Select dupes
+        </button>
+        <button class="btn sm danger" id="del-btn" onclick="openDeleteModal()" disabled>
+          <svg viewBox="0 0 16 16"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/></svg>
+          Delete selected
+        </button>
+        <button class="btn sm accent" onclick="startScan()">
+          <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>
+          Rescan
+        </button>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <div class="panel panel-main" style="overflow-y:auto">
+
+        <!-- ╔══════════════════════════════╗ -->
+        <!-- ║       DASHBOARD VIEW         ║ -->
+        <!-- ╚══════════════════════════════╝ -->
+        <div id="view-dashboard" class="view active">
+
+          <div class="metrics">
+            <div class="metric blue">
+              <div class="metric-label">Total Size</div>
+              <div class="metric-val blue">84.3<span style="font-size:14px">GB</span></div>
+              <div class="metric-sub">across 3,847 files</div>
+              <div class="metric-trend">💾</div>
+            </div>
+            <div class="metric red">
+              <div class="metric-label">Duplicate Waste</div>
+              <div class="metric-val red">11.2<span style="font-size:14px">GB</span></div>
+              <div class="metric-sub" id="dup-sub">in 24 duplicate files</div>
+              <div class="metric-trend">⚠</div>
+            </div>
+            <div class="metric green">
+              <div class="metric-label">Reclaimable</div>
+              <div class="metric-val green">14.8<span style="font-size:14px">GB</span></div>
+              <div class="metric-sub">17.5% of total</div>
+              <div class="metric-trend">✓</div>
+            </div>
+            <div class="metric warn">
+              <div class="metric-label">Large Files (&gt;100MB)</div>
+              <div class="metric-val warn">7</div>
+              <div class="metric-sub">largest: 2.8 GB</div>
+              <div class="metric-trend">📦</div>
+            </div>
+          </div>
+
+          <!-- type chart + recent -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">
+                  <svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="6"/><path d="M7 7l5-2"/><path d="M7 7V1"/></svg>
+                  Storage by type
+                </span>
+              </div>
+              <div class="card-body">
+                <div class="donut-wrap">
+                  <div class="ring-wrap">
+                    <svg width="110" height="110" viewBox="0 0 110 110" id="donut-svg">
+                      <circle cx="55" cy="55" r="40" fill="none" stroke="var(--bg4)" stroke-width="16"/>
+                    </svg>
+                    <div class="ring-label">
+                      <div class="ring-val" style="color:var(--text)">84.3</div>
+                      <div class="ring-sub">GB</div>
+                    </div>
+                  </div>
+                  <div class="donut-legend" id="donut-legend"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">
+                  <svg viewBox="0 0 14 14"><path d="M2 12l3-6 3 4 2-3 2 5"/></svg>
+                  Space used by type
+                </span>
+              </div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+                <div id="bar-chart"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- dup summary card -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 14 14"><path d="M2 3h6l3 3v5a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M4 3V2a1 1 0 011-1h6l3 3v5a1 1 0 01-1 1H8"/></svg>
+                Duplicate groups
+              </span>
+              <button class="btn sm" onclick="switchView('dupes',document.querySelector('.nav-item:nth-child(5))'))">View all</button>
+            </div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:6px" id="dash-dup-list"></div>
+          </div>
+        </div>
+
+        <!-- ╔══════════════════════════════╗ -->
+        <!-- ║       ALL FILES VIEW         ║ -->
+        <!-- ╚══════════════════════════════╝ -->
+        <div id="view-files" class="view" style="flex-direction:column;gap:0">
+          <div class="card" style="flex:1">
+            <div class="filter-bar" id="all-filter-bar">
+              <span class="filter-label">Type:</span>
+              <button class="chip active" onclick="setFilter('all',this,'all-filter-bar')">All</button>
+              <button class="chip" onclick="setFilter('video',this,'all-filter-bar')"><span class="dot" style="color:#4da6ff"></span>Video</button>
+              <button class="chip" onclick="setFilter('image',this,'all-filter-bar')"><span class="dot" style="color:#4af0b0"></span>Image</button>
+              <button class="chip" onclick="setFilter('document',this,'all-filter-bar')"><span class="dot" style="color:#ffa940"></span>Document</button>
+              <button class="chip" onclick="setFilter('audio',this,'all-filter-bar')"><span class="dot" style="color:#b06aff"></span>Audio</button>
+              <button class="chip" onclick="setFilter('other',this,'all-filter-bar')"><span class="dot" style="color:#55596a"></span>Other</button>
+              <div class="sort-group">
+                <label>Sort by</label>
+                <select onchange="setSort(this.value)" id="sort-select">
+                  <option value="size">Size</option>
+                  <option value="name">Name</option>
+                  <option value="type">Type</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap" id="all-table-wrap">
+              <table id="all-table">
+                <thead>
+                  <tr>
+                    <th style="width:30px"><input type="checkbox" class="cb" id="select-all-cb" onchange="toggleSelectAll(this)"/></th>
+                    <th onclick="setSort('name')">Name</th>
+                    <th onclick="setSort('name')">Path</th>
+                    <th>Type</th>
+                    <th>Duplicate</th>
+                    <th>Hash</th>
+                    <th onclick="setSort('size')" class="sorted">Size ▾</th>
+                    <th style="width:60px"></th>
+                  </tr>
+                </thead>
+                <tbody id="all-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ╔══════════════════════════════╗ -->
+        <!-- ║      DUPLICATES VIEW         ║ -->
+        <!-- ╚══════════════════════════════╝ -->
+        <div id="view-dupes" class="view" style="flex-direction:column;gap:0">
+          <div class="card" style="flex:1">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 14 14"><path d="M2 3h6l3 3v5a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M4 3V2a1 1 0 011-1h6l3 3v5a1 1 0 01-1 1H8"/></svg>
+                Duplicate file groups
+              </span>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span style="font-size:11px;color:var(--text3)" id="dup-space-info">11.2 GB reclaimable</span>
+                <button class="btn sm danger" onclick="deleteAllDupes()">
+                  <svg viewBox="0 0 16 16" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/></svg>
+                  Delete all dupes
+                </button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="dup-table">
+                <thead>
+                  <tr>
+                    <th style="width:30px"><input type="checkbox" class="cb" onchange="toggleSelectAllDupes(this)"/></th>
+                    <th>File name</th>
+                    <th>Location</th>
+                    <th>Hash</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th style="width:60px"></th>
+                  </tr>
+                </thead>
+                <tbody id="dup-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ╔══════════════════════════════╗ -->
+        <!-- ║       LARGE FILES VIEW       ║ -->
+        <!-- ╚══════════════════════════════╝ -->
+        <div id="view-large" class="view" style="flex-direction:column;gap:0">
+          <div class="card" style="flex:1">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="6"/><path d="M7 4v3l2 2"/></svg>
+                Files larger than 100 MB
+              </span>
+              <select style="font-size:11px" onchange="filterLargeFiles(this.value)">
+                <option value="100">Above 100 MB</option>
+                <option value="500">Above 500 MB</option>
+                <option value="1000">Above 1 GB</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:30px"><input type="checkbox" class="cb" onchange="toggleSelectLarge(this)"/></th>
+                    <th>File name</th>
+                    <th>Location</th>
+                    <th>Type</th>
+                    <th>Size</th>
+                    <th style="width:60px"></th>
+                  </tr>
+                </thead>
+                <tbody id="large-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ╔══════════════════════════════╗ -->
+        <!-- ║       DIRECTORY TREE         ║ -->
+        <!-- ╚══════════════════════════════╝ -->
+        <div id="view-tree" class="view">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 14 14"><path d="M1 1h4v3H1zM9 1h4v3h-4zM5 9h4v3H5z"/><path d="M3 4v2h8V4M7 6v3"/></svg>
+                Directory tree
+              </span>
+              <div class="tab-bar">
+                <button class="tab active" onclick="setTreeMode('size',this)">By size</button>
+                <button class="tab" onclick="setTreeMode('files',this)">By files</button>
+              </div>
+            </div>
+            <div style="padding:8px" id="tree-container"></div>
+          </div>
+        </div>
+
+        <!-- ╔══════════════════════════════╗ -->
+        <!-- ║        DELETED VIEW          ║ -->
+        <!-- ╚══════════════════════════════╝ -->
+        <div id="view-trash" class="view">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">
+                <svg viewBox="0 0 14 14"><path d="M1 3h12M4 3V2a1 1 0 011-1h4a1 1 0 011 1v1M2 3l1 9a1 1 0 001 1h8a1 1 0 001-1l1-9M5 6v4M9 6v4"/></svg>
+                Deleted files
+              </span>
+              <button class="btn sm danger" onclick="clearTrash()">Clear history</button>
+            </div>
+            <div id="trash-body">
+              <div class="empty">
+                <svg viewBox="0 0 32 32"><path d="M4 8h24M10 8V5a2 2 0 012-2h8a2 2 0 012 2v3M6 8l2 20a2 2 0 002 2h12a2 2 0 002-2l2-20M13 14v8M19 14v8"/></svg>
+                <p>No files deleted yet</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── RIGHT PANEL ─────────────────────────────── -->
+      <div class="panel panel-right">
+
+        <!-- Quick stats -->
+        <div>
+          <div class="section-title">
+            <svg viewBox="0 0 14 14"><path d="M7 1v12M1 7h12"/></svg>
+            Quick stats
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 8px;background:var(--bg3);border-radius:var(--r)">
+              <span style="color:var(--text2)">Files scanned</span>
+              <span style="font-family:var(--mono);color:var(--text)">3,847</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 8px;background:var(--bg3);border-radius:var(--r)">
+              <span style="color:var(--text2)">Dup groups</span>
+              <span style="font-family:var(--mono);color:var(--warn)" id="stat-dup-groups">6</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 8px;background:var(--bg3);border-radius:var(--r)">
+              <span style="color:var(--text2)">Space freed</span>
+              <span style="font-family:var(--mono);color:var(--accent)" id="stat-freed">0 MB</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 8px;background:var(--bg3);border-radius:var(--r)">
+              <span style="color:var(--text2)">Last scan</span>
+              <span style="font-family:var(--mono);color:var(--text3)" id="stat-scan-time">just now</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- File detail -->
+        <div>
+          <div class="section-title">
+            <svg viewBox="0 0 14 14"><path d="M2 1h7l3 3v9a1 1 0 01-1 1H2a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M9 1v4h4"/></svg>
+            File detail
+          </div>
+          <div id="file-detail" style="background:var(--bg3);border-radius:var(--r);padding:12px">
+            <div style="font-size:12px;color:var(--text3);text-align:center;padding:10px 0">Click a file to inspect</div>
+          </div>
+        </div>
+
+        <!-- Dup groups compact -->
+        <div>
+          <div class="section-title">
+            <svg viewBox="0 0 14 14"><path d="M2 3h6l3 3v5a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M4 3V2a1 1 0 011-1h6l3 3v5a1 1 0 01-1 1H8"/></svg>
+            Dup groups
+          </div>
+          <div id="dup-groups-panel"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="statusbar">
+      <span><span class="status-dot"></span> Ready</span>
+      <span id="sb-files">3,847 files</span>
+      <span id="sb-sel">0 selected</span>
+      <span id="sb-dups">24 duplicates</span>
+      <span style="margin-left:auto" id="sb-path">/Users/home/Documents</span>
+    </div>
+  </div>
+</div>
+
+<!-- SCAN OVERLAY -->
+<div class="scan-overlay" id="scan-overlay">
+  <div class="scan-box">
+    <div class="scan-spinner"></div>
+    <div class="scan-label" id="scan-label">Scanning directory...</div>
+    <div class="scan-file" id="scan-file">/Users/home/Documents/Videos/vacation_2023.mp4</div>
+    <div class="scan-bar"><div class="scan-bar-fill" id="scan-progress" style="width:0%"></div></div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h2>
+      <svg viewBox="0 0 18 18"><path d="M9 3a6 6 0 100 12A6 6 0 009 3zM9 7v3M9 12h.01"/></svg>
+      Confirm deletion
+    </h2>
+    <p>The following files will be <strong>permanently removed</strong> from disk. This action cannot be undone.</p>
+    <div class="modal-list" id="modal-list"></div>
+    <div class="modal-summary">
+      <span id="modal-count">0 files</span>
+      <span id="modal-size">0 MB to reclaim</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn danger" onclick="confirmDelete()">
+        <svg viewBox="0 0 16 16" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M3 4l1 9a1 1 0 001 1h6a1 1 0 001-1l1-9"/></svg>
+        Permanently delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+/* ─── DATA ─────────────────────────────────────────────── */
+const INITIAL_FILES = [
+  {id:1,  name:"vacation_2023_final.mp4",  path:"/Videos/Trips",       size:2840,  type:"video",    hash:"a3f9c1d2", dup:true,  dupGroup:"g1"},
+  {id:2,  name:"vacation_2023_final.mp4",  path:"/Videos/Backup",      size:2840,  type:"video",    hash:"a3f9c1d2", dup:true,  dupGroup:"g1"},
+  {id:3,  name:"project_proposal_v3.pdf",  path:"/Documents/Work",     size:14.2,  type:"document", hash:"b2e8a0f1", dup:false, dupGroup:null},
+  {id:4,  name:"photo_beach_001.jpg",      path:"/Photos/2023",        size:8.7,   type:"image",    hash:"c7d4b3a2", dup:true,  dupGroup:"g2"},
+  {id:5,  name:"photo_beach_001.jpg",      path:"/Photos/Backup",      size:8.7,   type:"image",    hash:"c7d4b3a2", dup:true,  dupGroup:"g2"},
+  {id:6,  name:"invoice_oct2023.pdf",      path:"/Documents/Finance",  size:0.9,   type:"document", hash:"d1f0e9c3", dup:false, dupGroup:null},
+  {id:7,  name:"meeting_recording.mp4",    path:"/Videos/Work",        size:1620,  type:"video",    hash:"e5a2b8d4", dup:false, dupGroup:null},
+  {id:8,  name:"playlist_mix.mp3",         path:"/Music",              size:48.3,  type:"audio",    hash:"f0c9d7e5", dup:false, dupGroup:null},
+  {id:9,  name:"screenshot_001.png",       path:"/Desktop",            size:2.1,   type:"image",    hash:"a1b2c3d4", dup:true,  dupGroup:"g3"},
+  {id:10, name:"screenshot_001.png",       path:"/Pictures/Screenshots",size:2.1,  type:"image",    hash:"a1b2c3d4", dup:true,  dupGroup:"g3"},
+  {id:11, name:"report_q3_draft.docx",     path:"/Documents/Work",     size:1.8,   type:"document", hash:"b3c4d5e6", dup:true,  dupGroup:"g4"},
+  {id:12, name:"report_q3_draft.docx",     path:"/Documents/Archive",  size:1.8,   type:"document", hash:"b3c4d5e6", dup:true,  dupGroup:"g4"},
+  {id:13, name:"family_photo.jpg",         path:"/Photos/Family",      size:5.4,   type:"image",    hash:"c5d6e7f8", dup:false, dupGroup:null},
+  {id:14, name:"presentation_final.pptx",  path:"/Documents/Work",     size:34.7,  type:"document", hash:"d7e8f9a0", dup:false, dupGroup:null},
+  {id:15, name:"podcast_ep42.mp3",         path:"/Music/Podcasts",     size:91.2,  type:"audio",    hash:"e9f0a1b2", dup:false, dupGroup:null},
+  {id:16, name:"archive_old.zip",          path:"/Downloads",          size:256,   type:"other",    hash:"f1a2b3c4", dup:false, dupGroup:null},
+  {id:17, name:"backup_data.tar.gz",       path:"/Downloads",          size:512,   type:"other",    hash:"a3b4c5d6", dup:false, dupGroup:null},
+  {id:18, name:"logo_design.png",          path:"/Design",             size:3.2,   type:"image",    hash:"b5c6d7e8", dup:true,  dupGroup:"g5"},
+  {id:19, name:"logo_design.png",          path:"/Design/Backup",      size:3.2,   type:"image",    hash:"b5c6d7e8", dup:true,  dupGroup:"g5"},
+  {id:20, name:"raw_footage_01.mov",       path:"/Videos/Raw",         size:4200,  type:"video",    hash:"c7d8e9f0", dup:false, dupGroup:null},
+  {id:21, name:"raw_footage_01.mov",       path:"/Videos/Backup",      size:4200,  type:"video",    hash:"c7d8e9f0", dup:true,  dupGroup:"g6"},
+  {id:22, name:"soundtrack_main.wav",      path:"/Music/Projects",     size:178,   type:"audio",    hash:"d9e0f1a2", dup:false, dupGroup:null},
+  {id:23, name:"notes_meeting.txt",        path:"/Documents",          size:0.04,  type:"document", hash:"e1f2a3b4", dup:false, dupGroup:null},
+  {id:24, name:"app_backup.dmg",           path:"/Downloads",          size:1100,  type:"other",    hash:"f3a4b5c6", dup:false, dupGroup:null},
+];
+
+const TYPE_COLORS = {
+  video:"#4da6ff", image:"#4af0b0", document:"#ffa940", audio:"#b06aff", other:"#55596a"
+};
+const TYPE_BG = {
+  video:"rgba(77,166,255,0.12)", image:"rgba(74,240,176,0.12)",
+  document:"rgba(255,169,64,0.12)", audio:"rgba(176,106,255,0.12)", other:"rgba(85,89,106,0.12)"
+};
+
+const TREE_DATA = [
+  {name:"Videos",      size:8660, files:4, depth:0, color:"#4da6ff"},
+  {name:"Trips",       size:2840, files:1, depth:1, color:"#4da6ff"},
+  {name:"Backup",      size:7040, files:2, depth:1, color:"#4da6ff"},
+  {name:"Work",        size:1620, files:1, depth:1, color:"#4da6ff"},
+  {name:"Raw",         size:4200, files:1, depth:1, color:"#4da6ff"},
+  {name:"Photos",      size:25.3, files:3, depth:0, color:"#4af0b0"},
+  {name:"2023",        size:8.7,  files:1, depth:1, color:"#4af0b0"},
+  {name:"Family",      size:5.4,  files:1, depth:1, color:"#4af0b0"},
+  {name:"Backup",      size:8.7,  files:1, depth:1, color:"#4af0b0"},
+  {name:"Documents",   size:52.7, files:6, depth:0, color:"#ffa940"},
+  {name:"Work",        size:50.7, files:3, depth:1, color:"#ffa940"},
+  {name:"Finance",     size:0.9,  files:1, depth:1, color:"#ffa940"},
+  {name:"Archive",     size:1.8,  files:1, depth:1, color:"#ffa940"},
+  {name:"Music",       size:317.5,files:3, depth:0, color:"#b06aff"},
+  {name:"Podcasts",    size:91.2, files:1, depth:1, color:"#b06aff"},
+  {name:"Projects",    size:178,  files:1, depth:1, color:"#b06aff"},
+  {name:"Downloads",   size:1868, files:3, depth:0, color:"#55596a"},
+  {name:"Desktop",     size:2.1,  files:1, depth:0, color:"#888780"},
+  {name:"Design",      size:6.4,  files:2, depth:0, color:"#ff6aad"},
+];
+
+/* ─── STATE ─────────────────────────────────────────────── */
+let files = [...INITIAL_FILES];
+let selected = new Set();
+let currentFilter = 'all';
+let currentSort = 'size';
+let currentView = 'dashboard';
+let treeMode = 'size';
+let totalFreed = 0;
+let trash = [];
+
+/* ─── HELPERS ────────────────────────────────────────────── */
+function fmt(mb) {
+  if (mb >= 1000) return (mb/1024).toFixed(1) + ' GB';
+  if (mb < 1) return (mb*1024).toFixed(0) + ' KB';
+  return mb.toFixed(1) + ' MB';
+}
+
+function typeIcon(type) {
+  const icons = {
+    video:`<svg viewBox="0 0 14 14"><rect x="1" y="2" width="9" height="10" rx="1"/><path d="M10 5l3-2v8l-3-2V5z"/></svg>`,
+    image:`<svg viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" rx="1"/><circle cx="4.5" cy="5" r="1"/><path d="M1 10l3-3 3 3 2-2 3 2"/></svg>`,
+    document:`<svg viewBox="0 0 14 14"><path d="M2 1h7l3 3v9a1 1 0 01-1 1H2a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M9 1v4h4"/><path d="M4 7h6M4 9h4"/></svg>`,
+    audio:`<svg viewBox="0 0 14 14"><path d="M1 5h3l2-3 2 8 2-5 1 0h3"/></svg>`,
+    other:`<svg viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="2"/><path d="M5 5l4 4M9 5l-4 4"/></svg>`,
+  };
+  return icons[type] || icons.other;
+}
+
+function getFiltered() {
+  let f = files;
+  if (currentFilter !== 'all') f = f.filter(x => x.type === currentFilter);
+  if (currentSort === 'size') f = [...f].sort((a,b) => b.size - a.size);
+  else if (currentSort === 'name') f = [...f].sort((a,b) => a.name.localeCompare(b.name));
+  else if (currentSort === 'type') f = [...f].sort((a,b) => a.type.localeCompare(b.type));
+  return f;
+}
+
+/* ─── NAV ────────────────────────────────────────────────── */
+function switchView(view, el) {
+  currentView = view;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  if (view === 'files') renderAllFiles();
+  if (view === 'dupes') renderDupes();
+  if (view === 'large') renderLargeFiles(100);
+  if (view === 'tree') renderTree();
+  if (view === 'trash') renderTrash();
+  if (view === 'dashboard') renderDashboard();
+}
+
+/* ─── DASHBOARD ──────────────────────────────────────────── */
+function renderDashboard() {
+  renderDonut();
+  renderBarChart();
+  renderDashDupes();
+  renderDupGroupsPanel();
+}
+
+function renderDonut() {
+  const types = ['video','image','document','audio','other'];
+  const sizes = { video:35.2, image:21.4, document:12.7, audio:7.8, other:7.2 };
+  const total = Object.values(sizes).reduce((a,b)=>a+b, 0);
+  const R = 40, CX = 55, CY = 55;
+  const circumference = 2 * Math.PI * R;
+  let offset = 0;
+  const svg = document.getElementById('donut-svg');
+  const existing = svg.querySelectorAll('.seg');
+  existing.forEach(e => e.remove());
+  types.forEach(t => {
+    const pct = sizes[t] / total;
+    const dash = pct * circumference;
+    const gap = circumference - dash;
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx', CX); c.setAttribute('cy', CY); c.setAttribute('r', R);
+    c.setAttribute('fill', 'none');
+    c.setAttribute('stroke', TYPE_COLORS[t]);
+    c.setAttribute('stroke-width', '16');
+    c.setAttribute('stroke-dasharray', `${dash} ${gap}`);
+    c.setAttribute('stroke-dashoffset', -offset * circumference);
+    c.setAttribute('transform', `rotate(-90 ${CX} ${CY})`);
+    c.classList.add('seg');
+    c.style.cursor = 'pointer';
+    c.addEventListener('mouseenter', () => highlightLegend(t));
+    svg.appendChild(c);
+    offset += pct;
+  });
+  const legend = document.getElementById('donut-legend');
+  legend.innerHTML = types.map(t => `
+    <div class="legend-row" data-type="${t}" onclick="setFilter('${t}',null,'all-filter-bar');switchView('files',document.querySelector('.nav-item:nth-child(3)'))">
+      <div class="leg-color" style="background:${TYPE_COLORS[t]}"></div>
+      <span class="leg-name">${t.charAt(0).toUpperCase()+t.slice(1)}</span>
+      <span class="leg-size">${fmt(sizes[t])}</span>
+      <span class="leg-pct">${Math.round(sizes[t]/total*100)}%</span>
+    </div>
+  `).join('');
+}
+
+function highlightLegend(t) {}
+
+function renderBarChart() {
+  const data = [
+    {label:'Video',    size:35.2, color:'#4da6ff'},
+    {label:'Other',    size:19.3, color:'#55596a'},
+    {label:'Image',    size:21.4, color:'#4af0b0'},
+    {label:'Document', size:12.7, color:'#ffa940'},
+    {label:'Audio',    size:7.8,  color:'#b06aff'},
+  ].sort((a,b)=>b.size-a.size);
+  const max = data[0].size;
+  document.getElementById('bar-chart').innerHTML = data.map(d => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:11px;color:var(--text3);min-width:60px">${d.label}</span>
+      <div style="flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${(d.size/max*100).toFixed(1)}%;background:${d.color};border-radius:3px;transition:width 0.5s"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--text2);min-width:46px;text-align:right">${fmt(d.size)}</span>
+    </div>
+  `).join('');
+}
+
+function renderDashDupes() {
+  const groups = getDupGroups().slice(0,4);
+  document.getElementById('dash-dup-list').innerHTML = groups.map(g => `
+    <div class="dup-group">
+      <div class="dup-group-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span style="color:var(--warn)">●</span>
+        <span class="dup-group-title">${g.name}</span>
+        <span class="dup-count">${g.files.length}×</span>
+        <span class="dup-save">${fmt(g.files[0].size * (g.files.length-1))}</span>
+      </div>
+      <div class="dup-files">
+        ${g.files.map((f,i) => `
+          <div class="dup-file">
+            <span style="flex:1;font-family:var(--mono)">${f.path}/${f.name}</span>
+            ${i===0 ? '<span class="dup-file-orig">KEEP</span>' : `<button class="btn sm danger" onclick="quickDelete(${f.id})">Del</button>`}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ─── ALL FILES TABLE ────────────────────────────────────── */
+function renderAllFiles() {
+  const rows = getFiltered();
+  document.getElementById('all-tbody').innerHTML = rows.length ? rows.map(f => `
+    <tr class="${selected.has(f.id)?'selected':''}" onclick="selectFile(${f.id})" id="tr-${f.id}">
+      <td><input type="checkbox" class="cb" ${selected.has(f.id)?'checked':''} onclick="e=>{e.stopPropagation();toggleSel(${f.id})}" onchange="toggleSel(${f.id})"/></td>
+      <td>
+        <div class="file-icon-cell" style="color:${TYPE_COLORS[f.type]}">
+          ${typeIcon(f.type)}
+          <span class="fname" title="${f.name}">${f.name}</span>
+        </div>
+      </td>
+      <td><span class="fpath">${f.path}</span></td>
+      <td><span class="type-pill" style="background:${TYPE_BG[f.type]};color:${TYPE_COLORS[f.type]}">${f.type}</span></td>
+      <td>${f.dup ? '<span class="dup-pill">⊕ dup</span>' : '<span style="color:var(--text3);font-size:11px">—</span>'}</td>
+      <td><span class="hash-cell">${f.hash}</span></td>
+      <td class="size-cell" style="color:${f.size>1000?'var(--danger)':f.size>100?'var(--warn)':'var(--text2)'}">${fmt(f.size)}</td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn" title="Inspect" onclick="event.stopPropagation();showDetail(${f.id})">
+            <svg viewBox="0 0 12 12"><circle cx="5" cy="5" r="3"/><path d="M7.5 7.5l2.5 2.5"/></svg>
+          </button>
+          <button class="icon-btn del" title="Delete" onclick="event.stopPropagation();quickDelete(${f.id})">
+            <svg viewBox="0 0 12 12"><path d="M1 3h10M4 3V2a1 1 0 011-1h2a1 1 0 011 1v1M2 3l1 7a1 1 0 001 1h4a1 1 0 001-1l1-7"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="8"><div class="empty"><svg viewBox="0 0 32 32"><path d="M4 26V8l12-6 12 6v18a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><path d="M12 22v-6h8v6"/></svg><p>No files match filter</p></div></td></tr>';
+  updateUI();
+}
+
+/* ─── DUPLICATES TABLE ───────────────────────────────────── */
+function renderDupes() {
+  const dups = files.filter(f => f.dup);
+  document.getElementById('dup-tbody').innerHTML = dups.length ? dups.map(f => {
+    const grp = files.filter(x=>x.dupGroup===f.dupGroup);
+    const isOrig = grp[0].id === f.id;
+    return `
+    <tr class="${selected.has(f.id)?'selected':''}" id="tr-dup-${f.id}" onclick="showDetail(${f.id})">
+      <td><input type="checkbox" class="cb" ${selected.has(f.id)?'checked':''} onchange="toggleSel(${f.id})"/></td>
+      <td>
+        <div class="file-icon-cell" style="color:${TYPE_COLORS[f.type]}">
+          ${typeIcon(f.type)}
+          <span class="fname">${f.name}</span>
+        </div>
+      </td>
+      <td><span class="fpath">${f.path}</span></td>
+      <td><span class="hash-cell">${f.hash}</span></td>
+      <td class="size-cell" style="color:var(--warn)">${fmt(f.size)}</td>
+      <td>${isOrig ? '<span style="font-size:10px;color:var(--accent);font-weight:600">ORIGINAL</span>' : '<span class="dup-pill">COPY</span>'}</td>
+      <td>
+        <div class="row-actions">
+          ${!isOrig ? `<button class="icon-btn del" title="Delete copy" onclick="event.stopPropagation();quickDelete(${f.id})">
+            <svg viewBox="0 0 12 12"><path d="M1 3h10M4 3V2a1 1 0 011-1h2a1 1 0 011 1v1M2 3l1 7a1 1 0 001 1h4a1 1 0 001-1l1-7"/></svg>
+          </button>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7"><div class="empty"><svg viewBox="0 0 32 32"><path d="M8 6h12l4 4v16a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2z"/><path d="M10 6V4a2 2 0 012-2h12l4 4v16a2 2 0 01-2 2h-2"/></svg><p>No duplicates found</p></div></td></tr>';
+}
+
+/* ─── LARGE FILES ────────────────────────────────────────── */
+function renderLargeFiles(minMB) {
+  const large = files.filter(f => f.size >= minMB).sort((a,b)=>b.size-a.size);
+  document.getElementById('large-tbody').innerHTML = large.length ? large.map(f => `
+    <tr onclick="showDetail(${f.id})">
+      <td><input type="checkbox" class="cb" ${selected.has(f.id)?'checked':''} onchange="toggleSel(${f.id})"/></td>
+      <td>
+        <div class="file-icon-cell" style="color:${TYPE_COLORS[f.type]}">
+          ${typeIcon(f.type)}
+          <span class="fname">${f.name}</span>
+        </div>
+      </td>
+      <td><span class="fpath">${f.path}</span></td>
+      <td><span class="type-pill" style="background:${TYPE_BG[f.type]};color:${TYPE_COLORS[f.type]}">${f.type}</span></td>
+      <td class="size-cell" style="color:${f.size>2000?'var(--danger)':'var(--warn)'}">${fmt(f.size)}</td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn del" onclick="event.stopPropagation();quickDelete(${f.id})">
+            <svg viewBox="0 0 12 12"><path d="M1 3h10M4 3V2a1 1 0 011-1h2a1 1 0 011 1v1M2 3l1 7a1 1 0 001 1h4a1 1 0 001-1l1-7"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="6"><div class="empty"><p>No large files above threshold</p></div></td></tr>';
+}
+
+function filterLargeFiles(v) { renderLargeFiles(Number(v)); }
+
+/* ─── TREE ───────────────────────────────────────────────── */
+function renderTree() {
+  const maxVal = Math.max(...TREE_DATA.map(t => treeMode==='size'?t.size:t.files));
+  document.getElementById('tree-container').innerHTML = TREE_DATA.map(t => `
+    <div class="tree-item" style="padding-left:${12+t.depth*20}px">
+      <svg style="width:13px;height:13px;stroke:${t.depth===0?t.color:'var(--text3)'};fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 14 14">
+        <path d="M1 4h4l2-2h6v9a1 1 0 01-1 1H2a1 1 0 01-1-1V4z"/>
+      </svg>
+      <span class="tree-name" style="${t.depth===0?'color:var(--text);font-weight:500':'color:var(--text3)'}">${t.name}</span>
+      <div class="tree-bar-wrap">
+        <div class="tree-bar-fill" style="width:${Math.max(3,(treeMode==='size'?t.size:t.files)/maxVal*100).toFixed(1)}%;background:${t.color};opacity:${t.depth===0?1:0.55}"></div>
+      </div>
+      <span class="tree-count" style="color:var(--text3)">${t.files}f</span>
+      <span class="tree-sz">${treeMode==='size'?fmt(t.size):t.files+' files'}</span>
+    </div>
+  `).join('');
+}
+
+function setTreeMode(m, btn) {
+  treeMode = m;
+  btn.closest('.tab-bar').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderTree();
+}
+
+/* ─── TRASH ──────────────────────────────────────────────── */
+function renderTrash() {
+  const el = document.getElementById('trash-body');
+  if (!trash.length) {
+    el.innerHTML = '<div class="empty"><svg viewBox="0 0 32 32"><path d="M4 8h24M10 8V5a2 2 0 012-2h8a2 2 0 012 2v3M6 8l2 20a2 2 0 002 2h12a2 2 0 002-2l2-20M13 14v8M19 14v8"/></svg><p>No files deleted yet</p></div>';
+    return;
+  }
+  el.innerHTML = `<table><thead><tr><th>File</th><th>Path</th><th>Type</th><th>Size</th><th>Deleted at</th></tr></thead><tbody>
+    ${trash.map(f=>`<tr>
+      <td><div class="file-icon-cell" style="color:var(--text3)">${typeIcon(f.type)}<span class="fname" style="text-decoration:line-through">${f.name}</span></div></td>
+      <td><span class="fpath">${f.path}</span></td>
+      <td><span class="type-pill" style="background:var(--bg4);color:var(--text3)">${f.type}</span></td>
+      <td class="size-cell" style="color:var(--text3)">${fmt(f.size)}</td>
+      <td style="font-size:11px;color:var(--text3);font-family:var(--mono)">${f.deletedAt}</td>
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+
+function clearTrash() { trash=[]; renderTrash(); showToast('History cleared','success'); }
+
+/* ─── DUP GROUPS ─────────────────────────────────────────── */
+function getDupGroups() {
+  const groups = {};
+  files.filter(f=>f.dup).forEach(f => {
+    if (!groups[f.dupGroup]) groups[f.dupGroup] = {name:f.name, files:[]};
+    groups[f.dupGroup].files.push(f);
+  });
+  return Object.values(groups);
+}
+
+function renderDupGroupsPanel() {
+  const groups = getDupGroups();
+  document.getElementById('dup-groups-panel').innerHTML = groups.map(g => `
+    <div class="dup-group" style="margin-bottom:5px">
+      <div class="dup-group-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span class="dup-group-title">${g.name}</span>
+        <span class="dup-count">${g.files.length}×</span>
+      </div>
+      <div class="dup-files">
+        ${g.files.map(f=>`<div class="dup-file"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.path}</span><span style="margin-left:6px;color:var(--warn)">${fmt(f.size)}</span></div>`).join('')}
+      </div>
+    </div>
+  `).join('') || '<div style="font-size:12px;color:var(--text3);padding:8px 6px">No duplicates remaining</div>';
+}
+
+/* ─── SELECTION ──────────────────────────────────────────── */
+function toggleSel(id) {
+  if (selected.has(id)) selected.delete(id); else selected.add(id);
+  updateUI();
+  if (currentView==='files') renderAllFiles();
+  if (currentView==='dupes') renderDupes();
+}
+
+function toggleSelectAll(cb) {
+  getFiltered().forEach(f => cb.checked ? selected.add(f.id) : selected.delete(f.id));
+  renderAllFiles();
+}
+
+function toggleSelectAllDupes(cb) {
+  files.filter(f=>f.dup).forEach(f => cb.checked ? selected.add(f.id) : selected.delete(f.id));
+  renderDupes(); updateUI();
+}
+
+function toggleSelectLarge(cb) {
+  files.filter(f=>f.size>=100).forEach(f => cb.checked ? selected.add(f.id) : selected.delete(f.id));
+  renderLargeFiles(100); updateUI();
+}
+
+function selectDupes() {
+  files.filter(f=>f.dup).forEach(f => selected.add(f.id));
+  updateUI();
+  if (currentView==='files') renderAllFiles();
+  if (currentView==='dupes') renderDupes();
+  showToast(`Selected ${files.filter(f=>f.dup).length} duplicate files`,'success');
+}
+
+function selectFile(id) {
+  toggleSel(id);
+  showDetail(id);
+}
+
+function updateUI() {
+  const sel = selected.size;
+  const selFiles = files.filter(f=>selected.has(f.id));
+  const selSize = selFiles.reduce((a,b)=>a+b.size,0);
+  document.getElementById('sel-summary').textContent = sel > 0 ? `${sel} selected · ${fmt(selSize)}` : '0 selected';
+  document.getElementById('del-btn').disabled = sel === 0;
+  document.getElementById('sb-sel').textContent = `${sel} selected`;
+  document.getElementById('sb-dups').textContent = `${files.filter(f=>f.dup).length} duplicates`;
+  document.getElementById('nav-dup-badge').textContent = files.filter(f=>f.dup).length;
+  document.getElementById('nav-trash-badge').textContent = trash.length;
+}
+
+/* ─── FILE DETAIL ────────────────────────────────────────── */
+function showDetail(id) {
+  const f = files.find(x=>x.id===id);
+  if (!f) return;
+  document.getElementById('file-detail').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+      <span style="color:${TYPE_COLORS[f.type]}">${typeIcon(f.type).replace('viewBox','style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox')}</span>
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px" title="${f.name}">${f.name}</div>
+        <div style="font-size:10px;color:var(--text3)">${f.type.toUpperCase()}</div>
+      </div>
+    </div>
+    ${row('Path', f.path, 'mono')}
+    ${row('Size', fmt(f.size), 'mono')}
+    ${row('Hash', f.hash, 'mono')}
+    ${row('Duplicate', f.dup ? '<span style="color:var(--warn)">Yes</span>' : '<span style="color:var(--accent)">No</span>')}
+    ${f.dup ? row('Group', f.dupGroup) : ''}
+    <div style="margin-top:10px;display:flex;gap:6px">
+      <button class="btn sm danger" onclick="quickDelete(${f.id})" style="flex:1;justify-content:center">Delete</button>
+    </div>
+  `;
+}
+
+function row(label, value, style) {
+  return `<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:11px;padding:4px 0;border-top:1px solid var(--border)">
+    <span style="color:var(--text3)">${label}</span>
+    <span style="${style==='mono'?'font-family:var(--mono);':''}color:var(--text2);max-width:130px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${value}">${value}</span>
+  </div>`;
+}
+
+/* ─── DELETE ─────────────────────────────────────────────── */
+function quickDelete(id) {
+  selected.clear(); selected.add(id); openDeleteModal();
+}
+
+function deleteAllDupes() {
+  const copies = files.filter(f => {
+    if (!f.dup) return false;
+    const grp = files.filter(x=>x.dupGroup===f.dupGroup);
+    return grp[0].id !== f.id;
+  });
+  copies.forEach(f => selected.add(f.id));
+  openDeleteModal();
+}
+
+function openDeleteModal() {
+  if (selected.size === 0) { showToast('No files selected','error'); return; }
+  const selFiles = files.filter(f=>selected.has(f.id));
+  const total = selFiles.reduce((a,b)=>a+b.size,0);
+  document.getElementById('modal-count').textContent = `${selFiles.length} file${selFiles.length!==1?'s':''}`;
+  document.getElementById('modal-size').textContent = `${fmt(total)} to reclaim`;
+  document.getElementById('modal-list').innerHTML = selFiles.map(f=>`
+    <div class="modal-list-item">
+      <span class="name">${f.path}/${f.name}</span>
+      <span style="color:var(--warn);font-family:var(--mono)">${fmt(f.size)}</span>
+    </div>
+  `).join('');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+function confirmDelete() {
+  const selFiles = files.filter(f=>selected.has(f.id));
+  const freed = selFiles.reduce((a,b)=>a+b.size,0);
+  const now = new Date().toLocaleTimeString();
+  selFiles.forEach(f => { f.deletedAt = now; trash.unshift(f); });
+  files = files.filter(f=>!selected.has(f.id));
+  totalFreed += freed;
+  selected.clear();
+  closeModal();
+  document.getElementById('stat-freed').textContent = fmt(totalFreed);
+  renderAllFiles();
+  renderDupGroupsPanel();
+  updateUI();
+  showToast(`${selFiles.length} files deleted · ${fmt(freed)} freed`, 'success');
+  if (currentView==='dashboard') renderDashboard();
+  if (currentView==='dupes') renderDupes();
+  if (currentView==='large') renderLargeFiles(100);
+}
+
+/* ─── FILTERS ────────────────────────────────────────────── */
+function setFilter(f, btn, barId) {
+  currentFilter = f;
+  if (barId) {
+    document.querySelectorAll(`#${barId} .chip`).forEach(c=>c.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+  }
+  renderAllFiles();
+}
+
+function setSort(v) {
+  currentSort = v;
+  document.querySelectorAll('th.sorted').forEach(t=>t.classList.remove('sorted'));
+  renderAllFiles();
+}
+
+/* ─── SCAN ANIMATION ─────────────────────────────────────── */
+function startScan() {
+  const overlay = document.getElementById('scan-overlay');
+  const bar = document.getElementById('scan-progress');
+  const lbl = document.getElementById('scan-label');
+  const file = document.getElementById('scan-file');
+  const fakePaths = [
+    '/Videos/vacation_2023_final.mp4','/Photos/beach_001.jpg','/Documents/report_q3.docx',
+    '/Music/playlist_mix.mp3','/Downloads/archive_old.zip','/Design/logo_design.png',
+    '/Videos/meeting_recording.mp4','/Documents/invoice_oct2023.pdf'
+  ];
+  overlay.classList.add('active');
+  let progress = 0;
+  let i = 0;
+  const interval = setInterval(() => {
+    progress += Math.random() * 8 + 2;
+    if (progress > 100) progress = 100;
+    bar.style.width = progress + '%';
+    file.textContent = fakePaths[i % fakePaths.length];
+    i++;
+    if (progress < 40) lbl.textContent = 'Indexing files...';
+    else if (progress < 70) lbl.textContent = 'Computing hashes...';
+    else if (progress < 90) lbl.textContent = 'Detecting duplicates...';
+    else lbl.textContent = 'Finalizing...';
+    if (progress >= 100) {
+      clearInterval(interval);
+      setTimeout(() => {
+        overlay.classList.remove('active');
+        bar.style.width = '0%';
+        document.getElementById('stat-scan-time').textContent = new Date().toLocaleTimeString();
+        showToast('Scan complete — 3,847 files indexed', 'success');
+        renderDashboard();
+      }, 400);
+    }
+  }, 80);
+}
+
+/* ─── TOAST ──────────────────────────────────────────────── */
+function showToast(msg, type='') {
+  const icon = type==='success'
+    ? '<svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="6"/><path d="M4.5 7l2 2 3-3"/></svg>'
+    : type==='error'
+    ? '<svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="6"/><path d="M5 5l4 4M9 5l-4 4"/></svg>'
+    : '<svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="6"/><path d="M7 5v2.5M7 9v.5"/></svg>';
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `${icon}<span>${msg}</span>`;
+  document.getElementById('toasts').appendChild(t);
+  requestAnimationFrame(() => { t.classList.add('show'); });
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 300);
+  }, 3000);
+}
+
+/* ─── INIT ───────────────────────────────────────────────── */
+renderDashboard();
+updateUI();
+</script>
+</body>
+</html>
